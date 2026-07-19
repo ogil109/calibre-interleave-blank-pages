@@ -4,6 +4,7 @@ version = "1.0.0"
 description = "Calibre plugin that writes an interleaved copy of every imported PDF, with a blank page after each page for handwritten notes."
 readme = "README.md"
 license = "GPL-3.0-or-later"
+authors = [{ name = "ogil109", email = "hello@oscargilbalaguer.com" }]
 requires-python = ">=3.9"
 keywords = ["calibre", "calibre-plugin", "pdf", "pymupdf", "note-taking"]
 dependencies = ["pymupdf>=1.24"]

@@ -51,7 +51,7 @@ For the last one, set the interpreter path to `~/.venvs/interleave/bin/python`.
 Build the plugin zip and hand it to Calibre:
 
 ```sh
-git clone https://github.com/<your-account>/calibre-interleave-blank-pages
+git clone https://github.com/ogil109/calibre-interleave-blank-pages
 cd calibre-interleave-blank-pages
 python scripts/build_plugin.py
 calibre-customize -a dist/interleave_blank_pages.zip

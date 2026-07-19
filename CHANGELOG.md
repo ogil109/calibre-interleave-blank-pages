@@ -22,4 +22,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Standalone CLI: `python interleave_blank_pages/interleave.py SRC -o DST`.
 - `scripts/build_plugin.py` to package the installable zip.
 
-[1.0.0]: https://github.com/<your-account>/calibre-interleave-blank-pages/releases/tag/v1.0.0
+[1.0.0]: https://github.com/ogil109/calibre-interleave-blank-pages/releases/tag/v1.0.0

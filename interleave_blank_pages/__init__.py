@@ -25,7 +25,7 @@ class InterleaveBlankPages(FileTypePlugin):
         'page into a folder of your choice, for handwritten notes.'
     )
     supported_platforms = ['linux', 'osx', 'windows']
-    author = 'ogil'
+    author = 'ogil109 <hello@oscargilbalaguer.com>'
     version = __version__
     minimum_calibre_version = (6, 0, 0)
 

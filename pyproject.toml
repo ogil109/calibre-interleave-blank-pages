@@ -1,0 +1,36 @@
+[project]
+name = "calibre-interleave-blank-pages"
+version = "1.0.0"
+description = "Calibre plugin that writes an interleaved copy of every imported PDF, with a blank page after each page for handwritten notes."
+readme = "README.md"
+license = "GPL-3.0-or-later"
+requires-python = ">=3.9"
+keywords = ["calibre", "calibre-plugin", "pdf", "pymupdf", "note-taking"]
+dependencies = ["pymupdf>=1.24"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+]
+
+# This project is a Calibre plugin, not an installable Python distribution:
+# Calibre loads the plugin from a zip, so there is nothing to build a wheel
+# from. uv still manages the virtualenv used for tests and the CLI.
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 110
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "C4", "SIM"]
+
+[tool.ruff.format]
+# Calibre's own codebase and plugin ecosystem use single quotes.
+quote-style = "single"

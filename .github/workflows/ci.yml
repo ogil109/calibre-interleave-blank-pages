@@ -7,6 +7,7 @@ on:
 
 jobs:
   test:
+    name: Unit tests (${{ matrix.os }}, py${{ matrix.python-version }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -25,6 +26,29 @@ jobs:
       - name: Run tests
         run: uv run --python ${{ matrix.python-version }} pytest
 
+  calibre:
+    # Proves the bundled wheel is importable inside Calibre's own Python and
+    # that the import hook works, which no plain virtualenv can show.
+    name: Bundled wheel and import hook
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Calibre
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends calibre xvfb
+          calibre --version
+
+      - name: Build and install the plugin
+        run: |
+          python scripts/build_plugin.py --platform linux
+          calibre-customize -a dist/interleave_blank_pages-linux.zip
+
+      - name: Run the Calibre checks
+        # Calibre pulls in Qt and expects a display even for headless work.
+        run: xvfb-run -a calibre-debug tests/calibre_checks.py
+
   lint:
     runs-on: ubuntu-latest
     steps:
@@ -40,14 +64,15 @@ jobs:
         run: uv run ruff format --check .
 
   package:
+    name: Package all platforms
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build the plugin zip
-        run: python scripts/build_plugin.py
+      - name: Build every platform zip
+        run: python scripts/build_plugin.py --platform all
 
       - uses: actions/upload-artifact@v4
         with:
-          name: interleave_blank_pages
-          path: dist/interleave_blank_pages.zip
+          name: plugin-zips
+          path: dist/*.zip

@@ -6,8 +6,6 @@ database record are never touched.
 """
 
 import os
-import subprocess
-import sys
 import traceback
 
 from calibre.customize import FileTypePlugin
@@ -62,7 +60,9 @@ class InterleaveBlankPages(FileTypePlugin):
 
     def _run(self, book_id, book_format, db):
         from calibre_plugins.interleave_blank_pages.config import prefs
+        from calibre_plugins.interleave_blank_pages.interleave import interleave
         from calibre_plugins.interleave_blank_pages.naming import needs_rewrite, output_name
+        from calibre_plugins.interleave_blank_pages.vendor import ensure_pymupdf
 
         if not prefs['enabled']:
             return
@@ -98,50 +98,9 @@ class InterleaveBlankPages(FileTypePlugin):
             default_log.info(f'{PLUGIN_NAME}: {dst_path} is up to date, skipping.')
             return
 
+        # Put the bundled PyMuPDF on sys.path before interleave() imports it.
+        ensure_pymupdf(self.plugin_path, log=lambda msg: default_log.info(f'{PLUGIN_NAME}: {msg}'))
+
         os.makedirs(output_dir, exist_ok=True)
-        self._interleave(src_path, dst_path, prefs['python_path'] or 'python3')
+        interleave(src_path, dst_path)
         default_log.info(f'{PLUGIN_NAME}: wrote {dst_path}')
-
-    # -- Running the interleaver -------------------------------------------
-
-    def _interleave(self, src_path, dst_path, python_path):
-        """Run interleave.py under an external Python that has PyMuPDF.
-
-        Calibre bundles its own Python, which cannot see packages installed
-        into the system Python, so the actual PDF work happens out of process.
-        """
-        script = self._script_path()
-        cmd = [python_path, script, src_path, '-o', dst_path]
-        result = subprocess.run(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0) if sys.platform == 'win32' else 0,
-        )
-        if result.returncode != 0:
-            output = result.stdout.decode('utf-8', 'replace').strip()
-            raise RuntimeError(
-                f'{python_path} exited {result.returncode} while interleaving {src_path}. '
-                'The output below says why; a ModuleNotFoundError means PyMuPDF is not '
-                f'installed for that interpreter.\n{output}'
-            )
-
-    def _script_path(self):
-        """Materialize interleave.py somewhere a subprocess can run it.
-
-        Installed plugins live inside a zip, so the script has to be unpacked
-        before it can be handed to another interpreter.
-        """
-        from calibre.constants import cache_dir
-
-        sibling = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'interleave.py')
-        if os.path.exists(sibling):
-            return sibling
-
-        source = self.load_resources(['interleave.py'])['interleave.py']
-        target_dir = os.path.join(cache_dir(), 'interleave_blank_pages')
-        os.makedirs(target_dir, exist_ok=True)
-        target = os.path.join(target_dir, 'interleave.py')
-        with open(target, 'wb') as handle:
-            handle.write(source)
-        return target

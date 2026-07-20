@@ -14,8 +14,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   configured output folder.
 - Blank pages match the dimensions of the page they follow, so documents with
   mixed page sizes interleave correctly.
-- Preferences widget for the output folder, the master enable switch, and the
-  path to a Python interpreter with PyMuPDF installed.
+- Preferences widget for the output folder and a master enable switch.
+- Nothing to install beyond the plugin: each release zip bundles a PyMuPDF
+  wheel for its platform, which the plugin unpacks and puts on `sys.path`
+  itself. The wheels target the CPython stable ABI, so one per platform covers
+  every Python that Calibre 6, 7 and 8 ship.
+- Per-platform release zips built by CI (`linux`, `macos`, `macos-intel`,
+  `windows`).
 - Output names derived from the Calibre record (`<Title> (<id>)-interleaved.pdf`)
   rather than the source filename, which is usually `book.pdf`.
 - Idempotency: existing output that is no older than its source is left alone.

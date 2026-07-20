@@ -1,8 +1,11 @@
-"""Shared fixtures.
+"""Shared fixtures for the plain-pytest suite.
 
 The plugin package cannot be imported normally: its ``__init__.py`` imports
 Calibre, which only exists inside Calibre's embedded Python. The Calibre-free
 modules are therefore imported as top-level modules from the plugin directory.
+
+The plugin hook itself is covered by ``tests/calibre_checks.py``, which runs
+under ``calibre-debug``.
 """
 
 import sys
@@ -21,11 +24,11 @@ def make_pdf(tmp_path):
     ``sizes`` is a list of (width, height) points, one per page. Each page is
     stamped with its index so tests can tell originals from blanks.
     """
-    import fitz
+    import pymupdf
 
     def _make(name, sizes):
         path = tmp_path / name
-        with fitz.open() as doc:
+        with pymupdf.open() as doc:
             for i, (width, height) in enumerate(sizes):
                 page = doc.new_page(width=width, height=height)
                 page.insert_text((72, 72), f'page {i}', fontsize=24)

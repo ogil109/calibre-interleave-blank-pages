@@ -7,7 +7,6 @@ prefs = JSONConfig('plugins/interleave_blank_pages')
 
 prefs.defaults['output_dir'] = ''
 prefs.defaults['enabled'] = True
-prefs.defaults['python_path'] = 'python3'
 
 
 class ConfigWidget:
@@ -54,11 +53,6 @@ def _build_widget():
             row.addWidget(browse)
             layout.addLayout(row)
 
-            layout.addWidget(QLabel('Python interpreter with PyMuPDF installed:'))
-            self.python_edit = QLineEdit(prefs['python_path'] or 'python3')
-            self.python_edit.setPlaceholderText('python3')
-            layout.addWidget(self.python_edit)
-
             note = QLabel(
                 'Interleaved copies are written to the output folder. Your Calibre library is never modified.'
             )
@@ -76,6 +70,5 @@ def _build_widget():
         def save_settings(self):
             prefs['enabled'] = self.enabled_box.isChecked()
             prefs['output_dir'] = self.dir_edit.text().strip()
-            prefs['python_path'] = self.python_edit.text().strip() or 'python3'
 
     return _ConfigWidget()

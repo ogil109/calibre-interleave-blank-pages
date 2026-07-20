@@ -15,3 +15,6 @@ __pycache__/
 .idea/
 .vscode/
 .DS_Store
+
+# Stray PDFs from manual benchmarking
+*.pdf

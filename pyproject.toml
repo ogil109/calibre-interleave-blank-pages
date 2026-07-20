@@ -7,10 +7,17 @@ license = "GPL-3.0-or-later"
 authors = [{ name = "ogil109", email = "hello@oscargilbalaguer.com" }]
 requires-python = ">=3.9"
 keywords = ["calibre", "calibre-plugin", "pdf", "pymupdf", "note-taking"]
-dependencies = ["pymupdf>=1.24"]
+
+# The plugin ships PyMuPDF as a bundled wheel rather than depending on an
+# installed copy, so this list stays empty. PyMuPDF appears in the dev group
+# below because the test suite needs it.
+dependencies = []
 
 [dependency-groups]
 dev = [
+    # pip is used by scripts/build_plugin.py to fetch the wheels it bundles.
+    "pip>=24.0",
+    "pymupdf>=1.24",
     "pytest>=8.0",
     "ruff>=0.6",
 ]

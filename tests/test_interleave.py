@@ -2,7 +2,7 @@
 
 import hashlib
 
-import fitz
+import pymupdf as fitz
 import pytest
 from interleave import interleave, main
 

@@ -26,43 +26,36 @@ mixed page sizes — scanned books especially — interleave correctly.
 
 ## Requirements
 
-- Calibre 6.0 or newer (developed and tested against Calibre 8.0)
-- A Python 3 interpreter with [PyMuPDF](https://pymupdf.readthedocs.io/)
-  installed
+Calibre 6.0 or newer. That is all — there is **nothing else to install**.
 
-### Why a separate Python?
-
-Calibre ships its own embedded Python, which cannot see packages you install
-with `pip` into your system Python. Rather than bundling platform-specific
-PyMuPDF wheels into the plugin, this plugin keeps itself thin and shells out to
-an interpreter you point it at. That interpreter is configurable, so any of
-these work:
-
-```sh
-pip install --user pymupdf          # then use: python3
-uv tool install pymupdf             # or a uv-managed interpreter
-python3 -m venv ~/.venvs/interleave && ~/.venvs/interleave/bin/pip install pymupdf
-```
-
-For the last one, set the interpreter path to `~/.venvs/interleave/bin/python`.
+The plugin bundles the PDF library it needs (PyMuPDF) inside its own zip and
+loads it itself, so there is no `pip` step, no separate Python, and nothing to
+configure beyond an output folder.
 
 ## Installation
 
-Build the plugin zip and hand it to Calibre:
+Download the zip for your platform from the
+[releases page](https://github.com/ogil109/calibre-interleave-blank-pages/releases)
+— they are named `interleave_blank_pages-linux.zip`, `-macos.zip`,
+`-macos-intel.zip` and `-windows.zip`.
+
+Then in Calibre: **Preferences → Plugins → Load plugin from file**, pick the
+zip, and restart Calibre. Or from a terminal:
+
+```sh
+calibre-customize -a interleave_blank_pages-linux.zip
+```
+
+The zips are around 20–25 MB because each carries the PDF library for its
+platform. Everything else about the plugin is a few kilobytes.
+
+### Building it yourself
 
 ```sh
 git clone https://github.com/ogil109/calibre-interleave-blank-pages
 cd calibre-interleave-blank-pages
-python scripts/build_plugin.py
-calibre-customize -a dist/interleave_blank_pages.zip
-```
-
-Restart Calibre if it is running.
-
-During development you can install the working tree directly:
-
-```sh
-calibre-customize -b interleave_blank_pages
+python scripts/build_plugin.py --platform linux   # or: all
+calibre-customize -a dist/interleave_blank_pages-linux.zip
 ```
 
 ## Configuration
@@ -74,7 +67,8 @@ plugin.
 | --- | --- |
 | Enabled | Master on/off switch. |
 | Output folder | Where interleaved copies are written. Created if missing. **If empty, the plugin does nothing.** |
-| Python interpreter | Path to a Python 3 with PyMuPDF installed. Defaults to `python3`. |
+
+Pick a folder and you are done.
 
 ## Behaviour
 
@@ -85,8 +79,8 @@ plugin.
   the same title from colliding.
 - Idempotent: if the output already exists and is no older than the source, it
   is left alone. Re-importing does not redo the work.
-- Never breaks an import. Any failure — a corrupt PDF, a missing interpreter,
-  an unwritable folder — is logged and swallowed; the import completes.
+- Never breaks an import. Any failure — a corrupt PDF, an unwritable folder —
+  is logged and swallowed; the import completes.
 - Never follows or creates symlinks, and never writes over the source file.
 
 Plugin messages appear in Calibre's log. To watch them, run `calibre-debug -g`
@@ -94,7 +88,8 @@ from a terminal.
 
 ## Command line
 
-The interleaving logic is a standalone script with no Calibre dependency:
+The interleaving logic is a standalone script with no Calibre dependency. With
+PyMuPDF available (`uv sync` sets that up):
 
 ```sh
 python interleave_blank_pages/interleave.py source.pdf -o interleaved.pdf
@@ -102,13 +97,19 @@ python interleave_blank_pages/interleave.py source.pdf -o interleaved.pdf
 
 ## Development
 
-The project uses [uv](https://docs.astral.sh/uv/):
+The project uses [uv](https://docs.astral.sh/uv/) for tooling:
 
 ```sh
-uv sync              # create the venv and install dependencies
-uv run pytest        # run the test suite
-uv run ruff check .  # lint
+uv sync                                # create the venv
+uv run pytest                          # interleaving, naming, idempotency
+uv run ruff check .                    # lint
+
+# Needs the plugin installed from a built zip:
+calibre-debug tests/calibre_checks.py  # bundled wheel + the import hook
 ```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the project layout, why the tests
+are split, and why the PDF library is bundled rather than depended on.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the project layout and how the
 pieces fit together.

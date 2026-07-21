@@ -27,9 +27,9 @@ jobs:
         run: uv run --python ${{ matrix.python-version }} pytest
 
   calibre:
-    # Proves the bundled wheel is importable inside Calibre's own Python and
-    # that the import hook works, which no plain virtualenv can show.
-    name: Bundled wheel and import hook
+    # Proves the bundled wheel imports inside Calibre's own Python and that both
+    # the import hook and the manual worker behave, which no virtualenv can show.
+    name: Bundled wheel, import hook, manual worker
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -40,10 +40,11 @@ jobs:
           sudo apt-get install -y --no-install-recommends calibre xvfb
           calibre --version
 
-      - name: Build and install the plugin
+      - name: Build and install both plugins
         run: |
           python scripts/build_plugin.py --platform linux
           calibre-customize -a dist/interleave_blank_pages-linux.zip
+          calibre-customize -a dist/interleave_blank_pages_manual-linux.zip
 
       - name: Run the Calibre checks
         # Calibre pulls in Qt and expects a display even for headless work.

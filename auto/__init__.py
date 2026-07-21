@@ -1,11 +1,13 @@
-"""Calibre plugin: write an interleaved copy of every imported PDF.
+"""Automatic plugin: interleave every imported PDF.
 
-For each imported PDF the plugin emits a side copy with one blank page after
-every original page, into a user-configured folder. The imported file and its
-database record are never touched.
+A FileTypePlugin that fires on PDF import and writes a side copy with one blank
+page after every original page, into a user-configured folder. The imported
+file and its database record are never touched.
+
+The actual work lives in the shared ``processing`` module, which this plugin
+and the manual action both call.
 """
 
-import os
 import traceback
 
 from calibre.customize import FileTypePlugin
@@ -38,7 +40,7 @@ class InterleaveBlankPages(FileTypePlugin):
         return True
 
     def config_widget(self):
-        from calibre_plugins.interleave_blank_pages.config import ConfigWidget
+        from .config import ConfigWidget
 
         return ConfigWidget()
 
@@ -53,16 +55,14 @@ class InterleaveBlankPages(FileTypePlugin):
         Wrapped whole: a failure here must never break the user's import.
         """
         try:
-            self._run(book_id, book_format, db)
+            self._run(book_id, db)
         except Exception:
             default_log.error(f'{PLUGIN_NAME}: failed for book {book_id}')
             default_log.error(traceback.format_exc())
 
-    def _run(self, book_id, book_format, db):
-        from calibre_plugins.interleave_blank_pages.config import prefs
-        from calibre_plugins.interleave_blank_pages.interleave import interleave
-        from calibre_plugins.interleave_blank_pages.naming import needs_rewrite, output_name
-        from calibre_plugins.interleave_blank_pages.vendor import ensure_pymupdf
+    def _run(self, book_id, db):
+        from .config import prefs
+        from .processing import LABELS, NO_PDF, WROTE, process_resolved, resolve
 
         if not prefs['enabled']:
             return
@@ -74,33 +74,25 @@ class InterleaveBlankPages(FileTypePlugin):
             )
             return
 
-        # Calibre lowercases the format before calling us; format_abspath
-        # uppercases again internally, so either case resolves correctly.
         api = getattr(db, 'new_api', db)
-        src_path = api.format_abspath(book_id, book_format)
-        if not src_path:
+        title, src_path = resolve(api, book_id)
+        if src_path is None:
             # Books added from a stream have no file on disk to read.
             default_log.info(f'{PLUGIN_NAME}: no file on disk for book {book_id}, skipping.')
             return
 
-        title = api.field_for('title', book_id)
-        dst_path = os.path.join(output_dir, output_name(title, book_id))
+        code = process_resolved(
+            book_id,
+            title,
+            src_path,
+            output_dir,
+            self.plugin_path,
+            log=lambda msg: default_log.info(f'{PLUGIN_NAME}: {msg}'),
+        )
 
-        if os.path.abspath(dst_path) == os.path.abspath(src_path):
-            default_log.warn(f'{PLUGIN_NAME}: output path equals source path, skipping.')
-            return
-
-        if os.path.islink(output_dir) or os.path.islink(dst_path):
-            default_log.warn(f'{PLUGIN_NAME}: refusing to write through a symlink: {dst_path}')
-            return
-
-        if not needs_rewrite(src_path, dst_path):
-            default_log.info(f'{PLUGIN_NAME}: {dst_path} is up to date, skipping.')
-            return
-
-        # Put the bundled PyMuPDF on sys.path before interleave() imports it.
-        ensure_pymupdf(self.plugin_path, log=lambda msg: default_log.info(f'{PLUGIN_NAME}: {msg}'))
-
-        os.makedirs(output_dir, exist_ok=True)
-        interleave(src_path, dst_path)
-        default_log.info(f'{PLUGIN_NAME}: wrote {dst_path}')
+        if code == WROTE:
+            default_log.info(f'{PLUGIN_NAME}: wrote interleaved copy of "{title}"')
+        elif code == NO_PDF:
+            default_log.info(f'{PLUGIN_NAME}: no file on disk for book {book_id}, skipping.')
+        else:
+            default_log.info(f'{PLUGIN_NAME}: skipped "{title}" ({LABELS.get(code, code)})')

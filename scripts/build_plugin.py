@@ -1,16 +1,21 @@
 #!/usr/bin/env python3
-"""Package the plugin into a zip Calibre can install.
+"""Package the plugins into zips Calibre can install.
 
-Calibre expects __init__.py at the *root* of the zip, while this repository
-keeps the plugin sources in a subdirectory, so the contents are flattened here.
+This repository ships two plugins that share a common library:
 
-Each zip also carries a PyMuPDF wheel for one platform, so that installing the
-plugin is the only thing a user has to do. The wheels are built for the
-CPython stable ABI, so one per platform covers every Calibre version.
+- ``auto``   -- the FileTypePlugin that interleaves every imported PDF.
+- ``manual`` -- the InterfaceAction that interleaves the selected books.
 
-    python scripts/build_plugin.py --platform linux
-    python scripts/build_plugin.py --platform all      # one zip per platform
-    python scripts/build_plugin.py --no-wheel          # sources only
+Calibre only lets a zip register one plugin class, so each is built into its
+own zip: the shared modules in ``shared/`` are flattened to the zip root
+alongside the chosen plugin's entry files, with the marker file Calibre needs
+and a PyMuPDF wheel for one platform. The wheels target the CPython stable ABI,
+so one per platform covers every Calibre version.
+
+    python scripts/build_plugin.py --platform linux            # both plugins, linux
+    python scripts/build_plugin.py --platform all              # both, every platform
+    python scripts/build_plugin.py --kind auto --platform all  # just the auto plugin
+    python scripts/build_plugin.py --no-wheel                  # sources only, both
 """
 
 import argparse
@@ -21,11 +26,19 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SOURCE_DIR = ROOT / 'interleave_blank_pages'
+SHARED_DIR = ROOT / 'shared'
 DIST_DIR = ROOT / 'dist'
 
-#: Shipped alongside the code so the plugin carries its licence.
+#: Shipped alongside the code so each plugin carries its licence.
 EXTRA_FILES = ['README.md', 'LICENSE']
+
+#: The two plugins, each keyed by the short name used on the command line.
+#: ``import_name`` is the Calibre plugin import name (the marker file and the
+#: calibre_plugins.<name> package); it must be unique per installed plugin.
+KINDS = {
+    'auto': {'dir': ROOT / 'auto', 'import_name': 'interleave_blank_pages'},
+    'manual': {'dir': ROOT / 'manual', 'import_name': 'interleave_blank_pages_manual'},
+}
 
 #: pip's platform tag for each name we expose. Kept explicit rather than
 #: detected, so a release build produces the same artifacts anywhere.
@@ -68,14 +81,21 @@ def download_wheel(platform_tag, into):
     return wheels[0]
 
 
-def build(output_path, platform=None):
+def build(kind, output_path, platform=None):
+    """Assemble one plugin zip: shared modules + the plugin's entry files."""
+    spec = KINDS[kind]
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     with zipfile.ZipFile(output_path, 'w', zipfile.ZIP_DEFLATED) as archive:
-        for path in sorted(SOURCE_DIR.rglob('*')):
-            if path.is_dir() or '__pycache__' in path.parts:
-                continue
-            archive.write(path, path.relative_to(SOURCE_DIR))
+        for source_dir in (SHARED_DIR, spec['dir']):
+            for path in sorted(source_dir.rglob('*.py')):
+                if '__pycache__' in path.parts:
+                    continue
+                archive.write(path, path.relative_to(source_dir))
+
+        # The marker file Calibre requires so the zip can import its submodules.
+        archive.writestr(f'plugin-import-name-{spec["import_name"]}.txt', '')
+
         for name in EXTRA_FILES:
             source = ROOT / name
             if source.exists():
@@ -91,8 +111,19 @@ def build(output_path, platform=None):
     return output_path
 
 
+def zip_name(kind, platform):
+    base = KINDS[kind]['import_name']
+    return f'{base}-{platform}.zip' if platform else f'{base}.zip'
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument(
+        '--kind',
+        choices=[*KINDS, 'both'],
+        default='both',
+        help='which plugin(s) to build (default: both)',
+    )
     parser.add_argument(
         '--platform',
         choices=[*PLATFORMS, 'all'],
@@ -100,21 +131,20 @@ def main(argv=None):
         help='which platform to bundle a wheel for (default: all)',
     )
     parser.add_argument('--no-wheel', action='store_true', help='omit the bundled wheel')
-    parser.add_argument('-o', '--output', type=Path, help='output path (single platform only)')
     args = parser.parse_args(argv)
 
+    kinds = list(KINDS) if args.kind == 'both' else [args.kind]
     if args.no_wheel:
-        written = build(args.output or DIST_DIR / 'interleave_blank_pages.zip')
-        report(written)
-        return 0
+        platforms = [None]
+    elif args.platform == 'all':
+        platforms = list(PLATFORMS)
+    else:
+        platforms = [args.platform]
 
-    targets = list(PLATFORMS) if args.platform == 'all' else [args.platform]
-    if args.output and len(targets) > 1:
-        parser.error('--output needs a single --platform')
-
-    for platform in targets:
-        path = args.output or DIST_DIR / f'interleave_blank_pages-{platform}.zip'
-        report(build(path, platform))
+    for kind in kinds:
+        for platform in platforms:
+            path = DIST_DIR / zip_name(kind, platform)
+            report(build(kind, path, platform))
     return 0
 
 

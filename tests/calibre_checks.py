@@ -1,13 +1,15 @@
-"""Checks that need Calibre. Run against an installed plugin zip:
+"""Checks that need Calibre. Build and install both plugin zips first:
 
     python scripts/build_plugin.py --platform linux
     calibre-customize -a dist/interleave_blank_pages-linux.zip
+    calibre-customize -a dist/interleave_blank_pages_manual-linux.zip
     calibre-debug tests/calibre_checks.py
 
-These cover what a plain virtualenv cannot: that the bundled PyMuPDF wheel
-really is importable inside Calibre's own Python, and that the postimport hook
-behaves against a real library. The interleaving itself is covered by
-tests/test_interleave.py.
+These cover what a plain virtualenv cannot: that the bundled PyMuPDF wheel is
+importable inside Calibre's own Python, that the shared processing rules behave,
+that the automatic import hook works against a real library, and that the
+manual action's background worker produces output. The pure interleaving is
+covered by tests/test_interleave.py.
 
 Written as a self-contained runner rather than a pytest module, because
 Calibre's Python has no pytest. Exits non-zero if any check fails.
@@ -29,6 +31,30 @@ def check(fn):
     return fn
 
 
+def auto_plugin():
+    from calibre.customize.ui import find_plugin
+
+    plugin = find_plugin('Interleave Blank Pages')
+    assert plugin is not None, 'the auto plugin is not installed; run calibre-customize -a first'
+    return plugin
+
+
+def manual_plugin():
+    from calibre.customize.ui import find_plugin
+
+    plugin = find_plugin('Interleave Blank Pages (manual)')
+    assert plugin is not None, 'the manual plugin is not installed; run calibre-customize -a first'
+    return plugin
+
+
+def load_pymupdf(plugin=None):
+    """Import PyMuPDF the way the plugins do: from the bundled wheel."""
+    from calibre_plugins.interleave_blank_pages.vendor import ensure_pymupdf
+
+    plugin = plugin or auto_plugin()
+    return ensure_pymupdf(plugin.plugin_path)
+
+
 def make_pdf(pymupdf, path, sizes):
     """Write a PDF with one page per (width, height), stamped with its index."""
     with pymupdf.open() as doc:
@@ -39,21 +65,9 @@ def make_pdf(pymupdf, path, sizes):
     return path
 
 
-def load_pymupdf():
-    """Import PyMuPDF the way the plugin does: from the bundled wheel."""
-    from calibre.customize.ui import find_plugin
-    from calibre_plugins.interleave_blank_pages.vendor import ensure_pymupdf
-
-    plugin = find_plugin('Interleave Blank Pages')
-    assert plugin is not None, 'the plugin is not installed; run calibre-customize -a first'
-    return ensure_pymupdf(plugin.plugin_path)
-
-
 @check
 def bundled_wheel_is_importable_inside_calibre(tmp):
     pymupdf = load_pymupdf()
-
-    # The whole point of bundling: this must work with nothing installed.
     assert hasattr(pymupdf, 'open'), 'PyMuPDF imported but looks wrong'
     print(f'       {pymupdf.__doc__.splitlines()[0]}')
 
@@ -76,7 +90,34 @@ def interleaving_works_inside_calibre(tmp):
 
 
 @check
-def postimport_hook_end_to_end(tmp):
+def shared_processing_reports_outcomes(tmp):
+    pymupdf = load_pymupdf()
+    from calibre_plugins.interleave_blank_pages.processing import (
+        SAME_PATH,
+        UP_TO_DATE,
+        WROTE,
+        process_resolved,
+    )
+
+    src = make_pdf(pymupdf, os.path.join(tmp, 'book.pdf'), [(595, 842)] * 2)
+    out = os.path.join(tmp, 'out')
+    path = auto_plugin().plugin_path
+
+    assert process_resolved(1, 'Title', src, out, path) == WROTE
+    # Second run with the output already present and newer.
+    assert process_resolved(1, 'Title', src, out, path) == UP_TO_DATE
+    # force ignores the mtime check.
+    assert process_resolved(1, 'Title', src, out, path, force=True) == WROTE
+    # Writing on top of the source itself is refused: this happens only when the
+    # source is already named like the output, so construct exactly that.
+    collision_dir = os.path.join(tmp, 'collide')
+    os.makedirs(collision_dir)
+    collision = make_pdf(pymupdf, os.path.join(collision_dir, 'Title (1)-interleaved.pdf'), [(595, 842)])
+    assert process_resolved(1, 'Title', collision, collision_dir, path, force=True) == SAME_PATH
+
+
+@check
+def auto_postimport_hook_end_to_end(tmp):
     pymupdf = load_pymupdf()
 
     from calibre.customize.ui import run_plugins_on_postimport
@@ -143,6 +184,52 @@ def postimport_hook_end_to_end(tmp):
     finally:
         for key, value in saved.items():
             prefs[key] = value
+
+
+@check
+def manual_action_target_resolves(tmp):
+    """The InterfaceActionBase must point at a real InterfaceAction subclass."""
+    from calibre.gui2.actions import InterfaceAction
+    from calibre_plugins.interleave_blank_pages_manual.action import InterleaveManualAction
+
+    assert issubclass(InterleaveManualAction, InterfaceAction)
+    # The actual_plugin string on the base must name that class.
+    assert manual_plugin().actual_plugin.endswith(':InterleaveManualAction')
+
+
+@check
+def manual_worker_produces_output(tmp):
+    """Run the manual action's background worker directly.
+
+    The worker takes book data already resolved on the GUI thread, so it can be
+    exercised without a running GUI -- which is the point of keeping database
+    access out of it.
+    """
+    pymupdf = load_pymupdf(manual_plugin())
+    from calibre_plugins.interleave_blank_pages_manual.action import _worker
+    from calibre_plugins.interleave_blank_pages_manual.processing import UP_TO_DATE, WROTE
+
+    src_a = make_pdf(pymupdf, os.path.join(tmp, 'a.pdf'), [(595, 842)] * 3)
+    src_b = make_pdf(pymupdf, os.path.join(tmp, 'b.pdf'), [(400, 600)] * 2)
+    outdir = os.path.join(tmp, 'out')
+    path = manual_plugin().plugin_path
+
+    jobs = [(1, 'Alpha', src_a), (2, 'Beta', src_b), (3, 'No PDF', None)]
+    results = _worker(jobs, outdir, path)
+
+    codes = {title: code for title, code, _ in results}
+    assert codes['Alpha'] == WROTE, codes
+    assert codes['Beta'] == WROTE, codes
+    assert codes['No PDF'] == 'no_pdf', codes
+
+    produced = sorted(os.listdir(outdir))
+    assert produced == ['Alpha (1)-interleaved.pdf', 'Beta (2)-interleaved.pdf'], produced
+    with pymupdf.open(os.path.join(outdir, 'Alpha (1)-interleaved.pdf')) as doc:
+        assert doc.page_count == 6, doc.page_count
+
+    # Re-running the same selection is idempotent.
+    again = {title: code for title, code, _ in _worker(jobs, outdir, path)}
+    assert again['Alpha'] == UP_TO_DATE, again
 
 
 @check

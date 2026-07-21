@@ -1,8 +1,8 @@
 """Shared fixtures for the plain-pytest suite.
 
-The plugin package cannot be imported normally: its ``__init__.py`` imports
-Calibre, which only exists inside Calibre's embedded Python. The Calibre-free
-modules are therefore imported as top-level modules from the plugin directory.
+The plugin entry points import Calibre, which only exists inside Calibre's
+embedded Python. The Calibre-free shared modules (``interleave``, ``naming``)
+are therefore imported as top-level modules from the ``shared`` directory.
 
 The plugin hook itself is covered by ``tests/calibre_checks.py``, which runs
 under ``calibre-debug``.
@@ -13,8 +13,8 @@ from pathlib import Path
 
 import pytest
 
-PLUGIN_DIR = Path(__file__).resolve().parent.parent / 'interleave_blank_pages'
-sys.path.insert(0, str(PLUGIN_DIR))
+SHARED_DIR = Path(__file__).resolve().parent.parent / 'shared'
+sys.path.insert(0, str(SHARED_DIR))
 
 
 @pytest.fixture

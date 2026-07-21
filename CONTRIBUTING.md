@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for taking a look. This is a deliberately small, single-purpose plugin;
+Thanks for taking a look. This is a deliberately small, single-purpose tool;
 the bar for new features is high, but fixes and platform reports are very
 welcome.
 
@@ -8,29 +8,45 @@ welcome.
 
 ```sh
 uv sync
-uv run pytest                          # naming and idempotency rules
-calibre-debug tests/calibre_checks.py  # interleaving and the import hook
+uv run pytest                          # interleaving, naming, idempotency
 uv run ruff check .
-```
 
-You need Calibre installed for the second command — the interleaving uses
-Calibre's bundled podofo, so it cannot run in a plain virtualenv.
+# Needs both plugin zips built and installed (see below):
+calibre-debug tests/calibre_checks.py  # bundled wheel, import hook, manual worker
+```
 
 ## Project layout
 
+Two plugins share one library. Calibre only lets a zip register one plugin
+class, so each is built into its own zip from the shared modules plus one
+plugin's entry files (see `scripts/build_plugin.py`).
+
 ```
-interleave_blank_pages/     the plugin; zipped flat into what Calibre installs
-  __init__.py               FileTypePlugin subclass: the postimport hook,
-                            path resolution, naming, idempotency, error handling
-  config.py                 JSONConfig settings + the Preferences widget
-  interleave.py             the PDF work, via Calibre's bundled podofo
-  naming.py                 output filename rules and the idempotency check
-  plugin-import-name-*.txt  empty marker Calibre requires so the plugin can
-                            import its own submodules
-scripts/build_plugin.py     packages the above into dist/*.zip
-tests/test_naming.py        plain pytest over the Calibre-free rules
-tests/calibre_checks.py     runs under calibre-debug; interleaving + the hook
+shared/               modules copied into BOTH zips
+  interleave.py       the PDF work, via the bundled PyMuPDF; standalone + a CLI
+  naming.py           output filename rules and the idempotency check
+  vendor.py           unpacks the bundled PyMuPDF wheel onto sys.path
+  config.py           JSONConfig settings + the Preferences widget
+  processing.py       the shared core: resolve() reads the DB, process_resolved()
+                      does the file work; both plugins call these
+auto/
+  __init__.py         FileTypePlugin: the postimport hook (automatic on import)
+manual/
+  __init__.py         InterfaceActionBase (points at the action below)
+  action.py           InterfaceAction: the toolbar/menu action + its worker
+scripts/build_plugin.py   assembles shared/ + auto|manual into dist/*.zip
+tests/test_*.py       plain pytest over the Calibre-free modules
+tests/calibre_checks.py   runs under calibre-debug; wheel, hook, manual worker
 ```
+
+Both plugins use the same `JSONConfig` path (`plugins/interleave_blank_pages`),
+so their output-folder setting is shared. Both unpack the wheel into the same
+cache subdirectory, so installing both unpacks it once.
+
+Shared modules use **relative imports** (`from .naming import ...`) so the same
+code works under either zip's package name (`calibre_plugins.interleave_blank_pages`
+or `..._manual`). `interleave.py` and `naming.py` import no siblings, so they
+stay importable standalone for the pytest suite.
 
 ### Why PyMuPDF is bundled
 
@@ -59,20 +75,25 @@ ever needs replacing, the replacement has to be bundled the same way.
 ### Why the tests are split
 
 - **`tests/` under pytest** covers `interleave.py` and `naming.py`, which
-  import nothing from Calibre. `tests/conftest.py` puts the plugin directory on
-  `sys.path` and imports them as top-level modules, because importing the
-  *package* would execute `__init__.py`, which needs Calibre.
+  import nothing from Calibre. `tests/conftest.py` puts `shared/` on `sys.path`
+  and imports them as top-level modules.
 - **`tests/calibre_checks.py` under `calibre-debug`** covers what only Calibre
-  can show: that the bundled wheel really is importable inside Calibre's
-  Python, and that the `postimport` hook behaves against a real library. It is
-  a self-contained runner because Calibre's Python has no pytest.
+  can show: that the bundled wheel is importable inside Calibre's Python, that
+  the shared processing rules behave, that the `postimport` hook works against a
+  real library, and that the manual action's background worker produces output.
+  It is a self-contained runner because Calibre's Python has no pytest.
 
-`calibre_checks.py` needs the plugin installed from a built zip, since it
-exercises the bundled wheel:
+The manual action's GUI glue (button → selection → job) is intentionally thin
+and is exercised at the worker level; its `_worker` takes book data already
+resolved on the GUI thread, so it runs headless. The pure GUI wiring is not
+unit-tested — verify it by hand in `calibre-debug -g`.
+
+`calibre_checks.py` needs both plugins installed from built zips:
 
 ```sh
 python scripts/build_plugin.py --platform linux
 calibre-customize -a dist/interleave_blank_pages-linux.zip
+calibre-customize -a dist/interleave_blank_pages_manual-linux.zip
 calibre-debug tests/calibre_checks.py
 ```
 
@@ -86,16 +107,18 @@ IBP_REAL_PDFS="/path/one.pdf:/path/two.pdf" calibre-debug tests/calibre_checks.p
 ## Testing changes in Calibre
 
 ```sh
-uv run python scripts/build_plugin.py
-calibre-customize -a dist/interleave_blank_pages.zip
+python scripts/build_plugin.py --platform linux
+calibre-customize -a dist/interleave_blank_pages-linux.zip
+calibre-customize -a dist/interleave_blank_pages_manual-linux.zip
 calibre-debug -g          # run Calibre with plugin log output visible
 ```
 
-To remove it again: `calibre-customize -r "Interleave Blank Pages"`.
+To remove them again: `calibre-customize -r "Interleave Blank Pages"` and
+`calibre-customize -r "Interleave Blank Pages (manual)"`.
 
 Please verify by hand that an import still succeeds when things go wrong — a
 corrupt PDF, an unset output folder, an unwritable target. Never breaking the
-user's import is the plugin's most important property.
+user's import is the automatic plugin's most important property.
 
 ## Style
 
@@ -108,6 +131,6 @@ user's import is the plugin's most important property.
 ## Pull requests
 
 Describe what you changed and how you verified it, including which Calibre
-version and OS you tested on. Add tests for anything in `interleave.py` or
-`naming.py` — `tests/calibre_checks.py` for the former, `tests/test_naming.py`
-for the latter.
+version and OS you tested on. Add tests: `tests/test_*.py` for anything in
+`shared/interleave.py` or `shared/naming.py`, and `tests/calibre_checks.py` for
+anything touching Calibre, the bundled wheel, or the manual worker.

@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build:
-    name: Build ${{ matrix.platform }} zip
+    name: Build ${{ matrix.platform }} zips
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -23,14 +23,15 @@ jobs:
         with:
           python-version: '3.12'
 
-      # Wheels are fetched by platform tag rather than built, so every zip can
-      # be produced from one runner.
-      - name: Build the plugin zip
+      # Builds both plugins (automatic + manual) for this platform. Wheels are
+      # fetched by platform tag rather than built, so every zip can be produced
+      # from one runner.
+      - name: Build the plugin zips
         run: python scripts/build_plugin.py --platform ${{ matrix.platform }}
 
       - uses: actions/upload-artifact@v4
         with:
-          name: interleave_blank_pages-${{ matrix.platform }}
+          name: plugins-${{ matrix.platform }}
           path: dist/*.zip
 
   release:
@@ -49,8 +50,15 @@ jobs:
           files: artifacts/*.zip
           generate_release_notes: true
           body: |
-            Download the zip for your platform, then in Calibre:
+            Download the zip(s) for your platform, then in Calibre:
             **Preferences → Plugins → Load plugin from file**.
 
+            - `interleave_blank_pages-<platform>.zip` — interleaves every PDF
+              you import, automatically.
+            - `interleave_blank_pages_manual-<platform>.zip` — adds a toolbar
+              action to interleave the books you select, for PDFs already in
+              your library.
+
+            Install either or both; they share the same output-folder setting.
             Each zip bundles the PDF library for its platform, so there is
             nothing else to install.

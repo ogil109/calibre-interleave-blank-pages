@@ -12,7 +12,7 @@ output-folder setting, so configuring either configures both.
 
 from calibre.customize import InterfaceActionBase
 
-__version__ = (1, 0, 0)
+__version__ = (0, 1, 0)
 
 PLUGIN_NAME = 'Interleave Blank Pages (manual)'
 

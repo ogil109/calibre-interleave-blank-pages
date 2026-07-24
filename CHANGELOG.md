@@ -5,7 +5,11 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [1.0.0] - 2026-07-19
+## [0.1.0] - 2026-07-24
+
+First release. The functionality below is verified against Calibre 8.0, but the
+plugins have not yet been used widely, so the API stays at 0.x until real-world
+use has had a chance to shake out surprises.
 
 ### Added
 
@@ -33,4 +37,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - `scripts/build_plugin.py` to package the installable zips (`--kind`,
   `--platform`).
 
-[1.0.0]: https://github.com/ogil109/calibre-interleave-blank-pages/releases/tag/v1.0.0
+### Known limitations
+
+- If no output folder is configured, the automatic plugin does nothing and says
+  so only in Calibre's log, which is easy to miss. Set the folder after
+  installing. (The manual action shows a dialog instead.)
+- The manual action is added to the main toolbar, not the book right-click
+  menu. Calibre builds that menu from a user-configured list, so a plugin
+  cannot put itself there; add it via Preferences → Toolbars & menus.
+
+[0.1.0]: https://github.com/ogil109/calibre-interleave-blank-pages/releases/tag/v0.1.0

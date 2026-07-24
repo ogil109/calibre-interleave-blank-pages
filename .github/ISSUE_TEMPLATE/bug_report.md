@@ -19,11 +19,12 @@ labels: bug
 
 **Environment**
 
+- Which plugin: automatic (`Interleave Blank Pages`), manual
+  (`Interleave Blank Pages (manual)`), or both:
 - Plugin version:
 - Calibre version:
-- OS:
-- Python interpreter configured in the plugin, and its PyMuPDF version
-  (`<your-python> -c "import fitz; print(fitz.__doc__)"`):
+- OS, and which release zip you installed (`linux`, `macos`, `macos-intel`,
+  `windows`):
 
 **The PDF**
 

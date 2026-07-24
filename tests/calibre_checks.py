@@ -233,6 +233,131 @@ def manual_worker_produces_output(tmp):
 
 
 @check
+def manual_action_gui_path(tmp):
+    """Drive the real InterfaceAction the way Calibre's GUI drives it.
+
+    Covers what the worker check cannot: building the QAction from action_spec,
+    the triggered connection, reading the selection, resolving it against a real
+    library, launching the job and rendering the completion summary.
+
+    A stub GUI stands in for the main window, wired exactly as
+    calibre/gui2/ui.py does (plugin_path + interface_action_base_plugin), and
+    the job runs synchronously so the check stays deterministic. The dialogs are
+    recorded rather than shown, since they are modal and nothing would dismiss
+    them.
+    """
+    import types
+
+    # Must be set before the first QApplication; there is no display in CI.
+    os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
+    from qt.core import QApplication, QWidget
+
+    pymupdf = load_pymupdf(manual_plugin())
+
+    from calibre.db.legacy import LibraryDatabase
+    from calibre.ebooks.metadata.book.base import Metadata
+    from calibre_plugins.interleave_blank_pages_manual import action as action_mod
+    from calibre_plugins.interleave_blank_pages_manual.config import prefs
+
+    app = QApplication.instance() or QApplication(sys.argv[:1])
+    assert app is not None
+
+    sample = make_pdf(pymupdf, os.path.join(tmp, 'sample.pdf'), [(595, 842)] * 3)
+    outdir = os.path.join(tmp, 'out')
+    libdir = os.path.join(tmp, 'lib')
+
+    shown = []
+    real_error, real_info = action_mod.error_dialog, action_mod.info_dialog
+    action_mod.error_dialog = lambda parent, title, msg, **kw: shown.append(('error', title, msg))
+    action_mod.info_dialog = lambda parent, title, msg, **kw: shown.append(('info', title, msg))
+
+    saved = dict(prefs)
+    try:
+        db = LibraryDatabase(libdir)
+        api = db.new_api
+
+        with_pdf = api.create_book_entry(Metadata('Selected Book'))
+        with open(sample, 'rb') as handle:
+            api.add_format(with_pdf, 'PDF', handle, run_hooks=False)
+        without_pdf = api.create_book_entry(Metadata('No Format Book'))
+
+        selection = []
+
+        def run_synchronously(job):
+            job.result = job.func(*job.args, **job.kwargs)
+            job.failed = False
+            job.callback(job)
+
+        gui = QWidget()
+        gui.library_view = types.SimpleNamespace(get_selected_ids=lambda: list(selection))
+        gui.current_db = db
+        gui.job_manager = types.SimpleNamespace(run_threaded_job=run_synchronously)
+        gui.status_bar = types.SimpleNamespace(show_message=lambda *a, **k: None)
+
+        base = manual_plugin()
+        action = action_mod.InterleaveManualAction(gui, '')
+        # Exactly what calibre/gui2/ui.py does after load_actual_plugin.
+        action.plugin_path = base.plugin_path
+        action.interface_action_base_plugin = base
+        action.do_genesis()
+
+        assert action.qaction is not None, 'no QAction was built from action_spec'
+        assert action.qaction.text() == 'Interleave blank pages', action.qaction.text()
+
+        def fire():
+            """Trigger the action and let queued callbacks run.
+
+            The job's completion callback goes through a Dispatcher, which
+            marshals it as a *queued* Qt signal -- it only runs once an event
+            loop turns. The real GUI has one; here it has to be pumped.
+            """
+            action.qaction.trigger()
+            for _ in range(3):
+                app.processEvents()
+
+        # 1. No output folder configured -> complains, writes nothing.
+        prefs['output_dir'] = ''
+        selection[:] = [with_pdf]
+        fire()
+        assert shown and shown[-1][0] == 'error', shown
+        assert 'output folder' in shown[-1][1].lower(), shown[-1]
+
+        # 2. Nothing selected -> complains.
+        prefs['output_dir'] = outdir
+        selection[:] = []
+        fire()
+        assert shown[-1][0] == 'error' and 'selected' in shown[-1][1].lower(), shown[-1]
+
+        # 3. Selection has no PDF -> complains, writes nothing.
+        selection[:] = [without_pdf]
+        fire()
+        assert shown[-1][0] == 'error' and 'PDF' in shown[-1][1], shown[-1]
+        assert not os.path.exists(outdir), 'output folder created for a book with no PDF'
+
+        # 4. The real path: a selected PDF is interleaved and reported.
+        selection[:] = [with_pdf, without_pdf]
+        fire()
+        assert shown[-1][0] == 'info', shown[-1]
+        assert 'Wrote 1' in shown[-1][2], shown[-1][2]
+
+        produced = sorted(os.listdir(outdir))
+        assert produced == [f'Selected Book ({with_pdf})-interleaved.pdf'], produced
+        with pymupdf.open(os.path.join(outdir, produced[0])) as doc:
+            assert doc.page_count == 6, doc.page_count
+
+        # 5. Running it again reports the skip rather than redoing the work.
+        fire()
+        assert 'Wrote 0' in shown[-1][2], shown[-1][2]
+        assert 'up to date' in shown[-1][2], shown[-1][2]
+
+        db.close()
+    finally:
+        action_mod.error_dialog, action_mod.info_dialog = real_error, real_info
+        for key, value in saved.items():
+            prefs[key] = value
+
+
+@check
 def real_world_books_survive(tmp):
     """Regression guard for the documents that made podofo segfault.
 

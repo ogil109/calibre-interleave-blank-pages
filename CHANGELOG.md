@@ -5,6 +5,16 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- The manual action's toolbar button is now greyed out when no output folder
+  is configured, with a tooltip explaining why, instead of failing on click.
+  It re-enables the moment you set the folder in the plugin preferences.
+- The automatic plugin now logs a warning (rather than an easily-missed info
+  line) when it is triggered with no output folder configured.
+
 ## [0.1.0] - 2026-07-24
 
 First release. The functionality below is verified against Calibre 8.0, but the
@@ -40,8 +50,9 @@ use has had a chance to shake out surprises.
 ### Known limitations
 
 - If no output folder is configured, the automatic plugin does nothing and says
-  so only in Calibre's log, which is easy to miss. Set the folder after
-  installing. (The manual action shows a dialog instead.)
+  so only in Calibre's log. It runs at import time and has no window of its own,
+  so it cannot prompt; set the folder after installing. (The manual action's
+  button is greyed out in this state instead — see Unreleased.)
 - The manual action is added to the main toolbar, not the book right-click
   menu. Calibre builds that menu from a user-configured list, so a plugin
   cannot put itself there; add it via Preferences → Toolbars & menus.

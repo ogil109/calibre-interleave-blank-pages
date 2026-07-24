@@ -42,3 +42,8 @@ class InterleaveBlankPagesManual(InterfaceActionBase):
 
     def save_settings(self, config_widget):
         config_widget.save_settings()
+        # Re-grey (or un-grey) the toolbar button right away, so setting the
+        # output folder here enables it without needing a library switch first.
+        action = getattr(self, 'actual_plugin_', None)
+        if action is not None:
+            action.refresh_enabled()

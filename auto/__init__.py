@@ -69,8 +69,11 @@ class InterleaveBlankPages(FileTypePlugin):
 
         output_dir = (prefs['output_dir'] or '').strip()
         if not output_dir:
-            default_log.info(
-                f'{PLUGIN_NAME}: no output folder configured, skipping. Set one in Preferences -> Plugins.'
+            # A warning, not info: this is the commonest reason the plugin
+            # appears to do nothing, and it should stand out in the log.
+            default_log.warn(
+                f'{PLUGIN_NAME}: no output folder configured, so nothing was written. '
+                'Set one in Preferences -> Plugins -> Interleave Blank Pages -> Customize plugin.'
             )
             return
 

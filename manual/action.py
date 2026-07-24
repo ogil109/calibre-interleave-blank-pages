@@ -49,8 +49,35 @@ class InterleaveManualAction(InterfaceAction):
     )
     action_type = 'current'
 
+    #: Shown on the button while it is disabled for want of an output folder.
+    NO_FOLDER_TIP = (
+        'Set an output folder in the plugin preferences first: '
+        f'Preferences → Plugins → {PLUGIN_NAME} → Customize plugin.'
+    )
+
     def genesis(self):
         self.qaction.triggered.connect(self.start)
+        # Remember the normal tooltip so it can be restored when re-enabled.
+        self._enabled_tip = self.qaction.toolTip()
+        self.refresh_enabled()
+
+    # The button is greyed out until an output folder is configured, so the
+    # commonest misconfiguration is visible without a click. refresh_enabled is
+    # called on the events that can change the answer -- startup, library
+    # switches -- and by the config dialog after it saves (see __init__.py).
+
+    def initialization_complete(self):
+        self.refresh_enabled()
+
+    def location_selected(self, loc):
+        self.refresh_enabled()
+
+    def refresh_enabled(self):
+        from .config import prefs
+
+        has_folder = bool((prefs['output_dir'] or '').strip())
+        self.qaction.setEnabled(has_folder)
+        self.qaction.setToolTip(self._enabled_tip if has_folder else self.NO_FOLDER_TIP)
 
     def start(self):
         from .config import prefs
@@ -58,6 +85,8 @@ class InterleaveManualAction(InterfaceAction):
 
         output_dir = (prefs['output_dir'] or '').strip()
         if not output_dir:
+            # The button is normally disabled in this state; this guards the
+            # keyboard-shortcut path, which can fire regardless.
             return error_dialog(
                 self.gui,
                 'No output folder set',

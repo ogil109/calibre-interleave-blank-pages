@@ -97,9 +97,10 @@ touched; use the manual action for those.
 **Manual action** — after installing, the action lands on the main toolbar as
 **Interleave blank pages**. Select one or more books and click it; it writes an
 interleaved copy of each selected book's PDF and reports a summary. Books
-without a PDF format are skipped. To add the action to the right-click menu,
-go to Preferences → Toolbars & menus → *The context menu for the books in the
-calibre library* and add it there.
+without a PDF format are skipped. If no output folder is set yet, the button is
+greyed out and its tooltip says so; it enables as soon as you set the folder.
+To add the action to the right-click menu, go to Preferences → Toolbars & menus
+→ *The context menu for the books in the calibre library* and add it there.
 
 ## Behaviour
 
@@ -113,6 +114,8 @@ calibre library* and add it there.
 - The automatic plugin never breaks an import: any failure — a corrupt PDF, an
   unwritable folder — is logged and swallowed; the import completes. The manual
   action reports failures per book without stopping the rest.
+- With no output folder set, the manual button is greyed out and the automatic
+  plugin logs a warning; neither writes anything until you set one.
 - Never follows or creates symlinks, and never writes over the source file.
 - The manual action runs in the background, so interleaving a large book does
   not freeze Calibre.

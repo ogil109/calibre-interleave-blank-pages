@@ -315,26 +315,49 @@ def manual_action_gui_path(tmp):
             for _ in range(3):
                 app.processEvents()
 
-        # 1. No output folder configured -> complains, writes nothing.
+        # 1. No output folder configured -> the button is greyed out, and its
+        #    tooltip says why, rather than letting a click fail.
         prefs['output_dir'] = ''
+        action.refresh_enabled()
+        assert not action.qaction.isEnabled(), 'button should be disabled with no output folder'
+        assert 'output folder' in action.qaction.toolTip().lower(), action.qaction.toolTip()
         selection[:] = [with_pdf]
-        fire()
-        assert shown and shown[-1][0] == 'error', shown
-        assert 'output folder' in shown[-1][1].lower(), shown[-1]
+        fire()  # trigger() is a no-op on a disabled action
+        assert not shown, f'disabled button still acted: {shown}'
+        assert not os.path.exists(outdir), 'output folder created while button disabled'
 
-        # 2. Nothing selected -> complains.
+        # 2. Setting the folder via the config dialog re-enables the button
+        #    immediately, without waiting for a library switch.
+        base.actual_plugin_ = action  # what load_actual_plugin records
+
+        class _Widget:
+            def save_settings(self):
+                prefs['output_dir'] = outdir
+
+        base.save_settings(_Widget())
+        assert action.qaction.isEnabled(), 'button not re-enabled after folder was set'
+        assert action.qaction.toolTip() == action._enabled_tip, action.qaction.toolTip()
+
+        # 3. The disabled-button guard: the keyboard-shortcut path can still
+        #    call start() directly, so it must refuse cleanly on its own.
+        prefs['output_dir'] = ''
+        action.start()
+        assert shown[-1][0] == 'error' and 'output folder' in shown[-1][1].lower(), shown[-1]
         prefs['output_dir'] = outdir
+        action.refresh_enabled()
+
+        # 4. Nothing selected -> complains.
         selection[:] = []
         fire()
         assert shown[-1][0] == 'error' and 'selected' in shown[-1][1].lower(), shown[-1]
 
-        # 3. Selection has no PDF -> complains, writes nothing.
+        # 5. Selection has no PDF -> complains, writes nothing.
         selection[:] = [without_pdf]
         fire()
         assert shown[-1][0] == 'error' and 'PDF' in shown[-1][1], shown[-1]
         assert not os.path.exists(outdir), 'output folder created for a book with no PDF'
 
-        # 4. The real path: a selected PDF is interleaved and reported.
+        # 6. The real path: a selected PDF is interleaved and reported.
         selection[:] = [with_pdf, without_pdf]
         fire()
         assert shown[-1][0] == 'info', shown[-1]
@@ -345,7 +368,7 @@ def manual_action_gui_path(tmp):
         with pymupdf.open(os.path.join(outdir, produced[0])) as doc:
             assert doc.page_count == 6, doc.page_count
 
-        # 5. Running it again reports the skip rather than redoing the work.
+        # 7. Running it again reports the skip rather than redoing the work.
         fire()
         assert 'Wrote 0' in shown[-1][2], shown[-1][2]
         assert 'up to date' in shown[-1][2], shown[-1][2]

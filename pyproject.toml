@@ -1,6 +1,6 @@
 [project]
 name = "calibre-interleave-blank-pages"
-version = "0.2.0"
+version = "0.2.1"
 description = "Calibre plugins that write an interleaved copy of your PDFs, with a blank page after each page for handwritten notes."
 readme = "README.md"
 license = "GPL-3.0-or-later"

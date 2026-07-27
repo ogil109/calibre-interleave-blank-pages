@@ -10,6 +10,12 @@ file is generated from [Conventional Commits](https://www.conventionalcommits.or
 by [commitizen](https://commitizen-tools.github.io/commitizen/), so new sections
 may read a little differently.
 
+## v0.2.1 (2026-07-27)
+
+### Refactor
+
+- single-source the plugin version in shared/version.py
+
 ## v0.2.0 (2026-07-27)
 
 ### Changed

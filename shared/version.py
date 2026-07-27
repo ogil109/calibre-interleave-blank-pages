@@ -5,7 +5,7 @@ Bumped automatically by commitizen (see ``[tool.commitizen]`` in
 ``(major, minor, patch)`` tuple Calibre expects for a plugin's ``version``.
 """
 
-__version__ = '0.2.0'
+__version__ = '0.2.1'
 
 #: Calibre wants the plugin version as a tuple of ints.
 version_tuple = tuple(int(part) for part in __version__.split('.'))

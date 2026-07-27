@@ -94,13 +94,21 @@ Pick a folder and you are done. Both plugins read the same setting.
 output folder. It runs at import time, so books already in your library are not
 touched; use the manual action for those.
 
-**Manual action** — after installing, the action lands on the main toolbar as
-**Interleave blank pages**. Select one or more books and click it; it writes an
-interleaved copy of each selected book's PDF and reports a summary. Books
-without a PDF format are skipped. If no output folder is set yet, the button is
-greyed out and its tooltip says so; it enables as soon as you set the folder.
-To add the action to the right-click menu, go to Preferences → Toolbars & menus
-→ *The context menu for the books in the calibre library* and add it there.
+**Manual action** — when you load this plugin through Calibre's plugin loader,
+Calibre asks where to put its button: the main toolbar, the book right-click
+menu, or both. Pick whichever you like. (If you install from the command line
+with `calibre-customize`, that prompt is skipped and the button is placed
+nowhere — add it afterwards under Preferences → Toolbars & menus.)
+
+Once it is placed, select one or more books and use **Interleave blank pages**;
+it writes an interleaved copy of each selected book's PDF and reports a summary.
+Books without a PDF format are skipped. If no output folder is set yet, the
+button is greyed out and its tooltip says so; it enables as soon as you set the
+folder.
+
+To move or add the button later: Preferences → Toolbars & menus → pick a
+location (e.g. *The main toolbar* or *The context menu for the books in the
+calibre library*) → move **Interleave Blank Pages (manual)** into it → Apply.
 
 ## Behaviour
 

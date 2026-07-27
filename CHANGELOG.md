@@ -5,6 +5,15 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Documentation
+
+- Corrected how the manual action's button is placed: Calibre's GUI plugin
+  loader prompts for a location (toolbar and/or right-click menu) on install;
+  the button does not appear on the toolbar automatically, and a command-line
+  install skips the prompt entirely. Earlier docs described this incorrectly.
+
 ## [0.2.0] - 2026-07-27
 
 ### Changed
@@ -59,9 +68,10 @@ use has had a chance to shake out surprises.
   so only in Calibre's log. It runs at import time and has no window of its own,
   so it cannot prompt; set the folder after installing. (The manual action's
   button is greyed out in this state instead, as of 0.2.0.)
-- The manual action is added to the main toolbar, not the book right-click
-  menu. Calibre builds that menu from a user-configured list, so a plugin
-  cannot put itself there; add it via Preferences → Toolbars & menus.
+- The manual action's button is not placed automatically. Loading the plugin
+  through Calibre's GUI prompts for a location (toolbar, right-click menu, or
+  both); installing from the command line skips that prompt, leaving the button
+  unplaced until you add it under Preferences → Toolbars & menus.
 
 [0.2.0]: https://github.com/ogil109/calibre-interleave-blank-pages/releases/tag/v0.2.0
 [0.1.0]: https://github.com/ogil109/calibre-interleave-blank-pages/releases/tag/v0.1.0

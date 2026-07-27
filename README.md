@@ -1,5 +1,9 @@
 # Interleave Blank Pages
 
+[![CI](https://github.com/ogil109/calibre-interleave-blank-pages/actions/workflows/ci.yml/badge.svg)](https://github.com/ogil109/calibre-interleave-blank-pages/actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/ogil109/calibre-interleave-blank-pages)](https://github.com/ogil109/calibre-interleave-blank-pages/releases/latest)
+[![License: GPL-3.0-or-later](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
+
 A pair of [Calibre](https://calibre-ebook.com/) plugins that write a copy of a
 PDF with **one blank page after every original page** into a folder you choose.
 

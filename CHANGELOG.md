@@ -10,7 +10,7 @@ file is generated from [Conventional Commits](https://www.conventionalcommits.or
 by [commitizen](https://commitizen-tools.github.io/commitizen/), so new sections
 may read a little differently.
 
-## [0.2.0] - 2026-07-27
+## v0.2.0 (2026-07-27)
 
 ### Changed
 
@@ -26,7 +26,7 @@ may read a little differently.
   while running. Developer- and CI-facing only; the installed plugins were
   never affected.
 
-## [0.1.0] - 2026-07-24
+## v0.1.0 (2026-07-24)
 
 First release. The functionality below is verified against Calibre 8.0, but the
 plugins have not yet been used widely, so the API stays at 0.x until real-world
@@ -68,6 +68,3 @@ use has had a chance to shake out surprises.
   through Calibre's GUI prompts for a location (toolbar, right-click menu, or
   both); installing from the command line skips that prompt, leaving the button
   unplaced until you add it under Preferences → Toolbars & menus.
-
-[0.2.0]: https://github.com/ogil109/calibre-interleave-blank-pages/releases/tag/v0.2.0
-[0.1.0]: https://github.com/ogil109/calibre-interleave-blank-pages/releases/tag/v0.1.0

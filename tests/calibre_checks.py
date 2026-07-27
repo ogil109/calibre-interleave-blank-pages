@@ -15,6 +15,7 @@ Written as a self-contained runner rather than a pytest module, because
 Calibre's Python has no pytest. Exits non-zero if any check fails.
 """
 
+import contextlib
 import hashlib
 import io
 import os
@@ -29,6 +30,26 @@ CHECKS = []
 def check(fn):
     CHECKS.append(fn)
     return fn
+
+
+@contextlib.contextmanager
+def isolated_prefs(prefs):
+    """Let a check mutate ``prefs`` without ever writing the real config file.
+
+    The plugins read a shared JSONConfig singleton, so a check has to mutate
+    that same object for the plugin to see its values. Setting ``no_commit``
+    keeps those mutations in memory only, so a developer's (or CI's) actual
+    Calibre configuration is never touched, even if the check crashes.
+    """
+    saved = dict(prefs)
+    prefs.no_commit = True
+    try:
+        yield prefs
+    finally:
+        # Restored while no_commit is still True, so nothing reaches disk.
+        for key, value in saved.items():
+            prefs[key] = value
+        prefs.no_commit = False
 
 
 def auto_plugin():
@@ -129,10 +150,10 @@ def auto_postimport_hook_end_to_end(tmp):
     outdir = os.path.join(tmp, 'out')
     libdir = os.path.join(tmp, 'lib')
 
-    saved = dict(prefs)
-    prefs['output_dir'] = outdir
-    prefs['enabled'] = True
-    try:
+    with isolated_prefs(prefs):
+        prefs['output_dir'] = outdir
+        prefs['enabled'] = True
+
         db = LibraryDatabase(libdir)
         api = db.new_api
 
@@ -181,9 +202,6 @@ def auto_postimport_hook_end_to_end(tmp):
         assert len(os.listdir(outdir)) == 2, 'corrupt book produced output'
 
         db.close()
-    finally:
-        for key, value in saved.items():
-            prefs[key] = value
 
 
 @check
@@ -271,7 +289,10 @@ def manual_action_gui_path(tmp):
     action_mod.error_dialog = lambda parent, title, msg, **kw: shown.append(('error', title, msg))
     action_mod.info_dialog = lambda parent, title, msg, **kw: shown.append(('info', title, msg))
 
+    # Same guarantee as isolated_prefs (never write the real config), inlined
+    # because this check also needs a finally to restore the patched dialogs.
     saved = dict(prefs)
+    prefs.no_commit = True
     try:
         db = LibraryDatabase(libdir)
         api = db.new_api
@@ -376,8 +397,10 @@ def manual_action_gui_path(tmp):
         db.close()
     finally:
         action_mod.error_dialog, action_mod.info_dialog = real_error, real_info
+        # Restored while no_commit is still True, so nothing reaches disk.
         for key, value in saved.items():
             prefs[key] = value
+        prefs.no_commit = False
 
 
 @check

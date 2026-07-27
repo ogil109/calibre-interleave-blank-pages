@@ -73,7 +73,7 @@ jobs:
       - name: Build every platform zip
         run: python scripts/build_plugin.py --platform all
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v7
         with:
           name: plugin-zips
           path: dist/*.zip

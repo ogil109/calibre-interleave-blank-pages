@@ -64,6 +64,23 @@ jobs:
       - name: Check formatting
         run: uv run ruff format --check .
 
+  commits:
+    # Releases are cut from conventional commits, so a PR whose commits are not
+    # conventional would silently never release. Fail fast instead.
+    name: Conventional commits
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Check commit messages
+        run: uv run cz check --rev-range ${{ github.event.pull_request.base.sha }}..HEAD
+
   package:
     name: Package all platforms
     runs-on: ubuntu-latest

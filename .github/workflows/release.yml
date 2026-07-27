@@ -1,53 +1,69 @@
 name: Release
 
+# Fully automated, driven by conventional commits. On every push to main this
+# runs `cz bump`: if the commits since the last tag warrant a release it bumps
+# the version and changelog, tags, and publishes the plugin zips -- all in this
+# one job. Doing everything here avoids GitHub's rule that a tag pushed with the
+# default GITHUB_TOKEN cannot trigger a separate workflow, so no PAT is needed.
+
 on:
   push:
-    tags: ['v*']
+    branches: [main]
   workflow_dispatch:
+
+# Never let two releases run at once.
+concurrency: release
 
 permissions:
   contents: write
 
 jobs:
-  build:
-    name: Build ${{ matrix.platform }} zips
+  release:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        platform: [linux, macos, macos-intel, windows]
-
     steps:
       - uses: actions/checkout@v5
-
-      - uses: actions/setup-python@v6
         with:
-          python-version: '3.12'
+          fetch-depth: 0            # cz needs full history to find the last tag
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      # Builds both plugins (automatic + manual) for this platform. Wheels are
-      # fetched by platform tag rather than built, so every zip can be produced
-      # from one runner.
+      - uses: astral-sh/setup-uv@v7
+
+      - name: Configure git identity
+        run: |
+          git config user.name  'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+      - name: Bump version from commits
+        id: bump
+        run: |
+          set +e
+          uv run cz bump --yes --changelog
+          code=$?
+          set -e
+          if [ "$code" -eq 0 ]; then
+            echo "released=true" >> "$GITHUB_OUTPUT"
+            echo "version=$(uv run cz version -p)" >> "$GITHUB_OUTPUT"
+          elif [ "$code" -eq 21 ]; then
+            echo 'No commits warrant a release; nothing to do.'
+            echo "released=false" >> "$GITHUB_OUTPUT"
+          else
+            exit "$code"           # a real failure, not "nothing to bump"
+          fi
+
+      - name: Push the bump commit and tag
+        if: steps.bump.outputs.released == 'true'
+        run: git push --follow-tags origin HEAD:main
+
       - name: Build the plugin zips
-        run: python scripts/build_plugin.py --platform ${{ matrix.platform }}
+        if: steps.bump.outputs.released == 'true'
+        run: uv run python scripts/build_plugin.py --platform all
 
-      - uses: actions/upload-artifact@v7
-        with:
-          name: plugins-${{ matrix.platform }}
-          path: dist/*.zip
-
-  release:
-    needs: build
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
-    steps:
-      - uses: actions/download-artifact@v8
-        with:
-          path: artifacts
-          merge-multiple: true
-
-      - name: Publish the release
+      - name: Publish the GitHub release
+        if: steps.bump.outputs.released == 'true'
         uses: softprops/action-gh-release@v3
         with:
-          files: artifacts/*.zip
+          tag_name: v${{ steps.bump.outputs.version }}
+          files: dist/*.zip
           generate_release_notes: true
           body: |
             Download the zip(s) for your platform, then in Calibre:

@@ -5,14 +5,10 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
-
-### Documentation
-
-- Corrected how the manual action's button is placed: Calibre's GUI plugin
-  loader prompts for a location (toolbar and/or right-click menu) on install;
-  the button does not appear on the toolbar automatically, and a command-line
-  install skips the prompt entirely. Earlier docs described this incorrectly.
+Entries below 0.2.0 were written by hand. From the next release onward this
+file is generated from [Conventional Commits](https://www.conventionalcommits.org/)
+by [commitizen](https://commitizen-tools.github.io/commitizen/), so new sections
+may read a little differently.
 
 ## [0.2.0] - 2026-07-27
 

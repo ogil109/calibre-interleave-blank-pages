@@ -128,6 +128,32 @@ user's import is the automatic plugin's most important property.
 - Keep it single-purpose. See the non-goals in the README before proposing a
   feature.
 
+## Commits and releases
+
+Commit messages must follow
+[Conventional Commits](https://www.conventionalcommits.org/) — CI rejects a PR
+whose commits do not, because releases are cut from them. In short:
+
+- `feat: …` — a user-facing addition (bumps the minor version)
+- `fix:`, `refactor:`, `perf:` — a bug fix or code change (bumps the patch
+  version)
+- a `!` after the type or a `BREAKING CHANGE:` footer marks a breaking change
+  (while the project is 0.x this bumps the minor, not the major)
+- `docs:`, `test:`, `ci:`, `build:`, `chore:`, `style:` — no release
+
+These are commitizen's standard conventional-commit rules; use the type that
+honestly describes the change and let the tooling decide the version.
+
+`uv run cz commit` walks you through a valid message if you'd rather not
+memorise the format.
+
+**Releases are fully automated — do not bump versions or edit the changelog by
+hand.** On every push to `main`, the Release workflow runs `commitizen`, which
+works out the next version from the commits since the last tag, updates
+`shared/version.py`, `pyproject.toml` and `CHANGELOG.md`, tags, and publishes
+the plugin zips. If nothing since the last tag warrants a release, it does
+nothing. The version lives in exactly one place: `shared/version.py`.
+
 ## Pull requests
 
 Describe what you changed and how you verified it, including which Calibre

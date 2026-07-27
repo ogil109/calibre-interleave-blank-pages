@@ -5,7 +5,7 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.2.0] - 2026-07-27
 
 ### Changed
 
@@ -14,6 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   It re-enables the moment you set the folder in the plugin preferences.
 - The automatic plugin now logs a warning (rather than an easily-missed info
   line) when it is triggered with no output folder configured.
+
+### Fixed
+
+- The in-Calibre check suite no longer writes to the real plugin configuration
+  while running. Developer- and CI-facing only; the installed plugins were
+  never affected.
 
 ## [0.1.0] - 2026-07-24
 
@@ -52,9 +58,10 @@ use has had a chance to shake out surprises.
 - If no output folder is configured, the automatic plugin does nothing and says
   so only in Calibre's log. It runs at import time and has no window of its own,
   so it cannot prompt; set the folder after installing. (The manual action's
-  button is greyed out in this state instead — see Unreleased.)
+  button is greyed out in this state instead, as of 0.2.0.)
 - The manual action is added to the main toolbar, not the book right-click
   menu. Calibre builds that menu from a user-configured list, so a plugin
   cannot put itself there; add it via Preferences → Toolbars & menus.
 
+[0.2.0]: https://github.com/ogil109/calibre-interleave-blank-pages/releases/tag/v0.2.0
 [0.1.0]: https://github.com/ogil109/calibre-interleave-blank-pages/releases/tag/v0.1.0

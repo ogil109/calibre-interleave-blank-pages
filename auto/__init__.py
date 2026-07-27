@@ -13,7 +13,7 @@ import traceback
 from calibre.customize import FileTypePlugin
 from calibre.utils.logging import default_log
 
-__version__ = (0, 2, 0)
+from .version import version_tuple as __version__
 
 PLUGIN_NAME = 'Interleave Blank Pages'
 
